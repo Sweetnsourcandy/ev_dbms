@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EV Thermal Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{color-scheme:dark;--bg:rgb(12,13,16);--panel:rgb(20,22,27);--panel2:rgb(28,31,37);--line:rgb(44,48,56);--tx:rgb(235,238,242);--mut:rgb(137,144,156);--c0:rgb(112,150,205);--c1:rgb(135,182,140);--c2:rgb(205,190,120);--c3:rgb(215,150,110);--c4:rgb(200,105,105);--c5:rgb(150,150,160);--heat:linear-gradient(90deg,rgb(112,150,205),rgb(122,172,170),rgb(135,182,140),rgb(205,190,120),rgb(215,150,110),rgb(200,105,105));box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 Figtree,system-ui,sans-serif;min-height:100vh;background-image:radial-gradient(900px 420px at 80% -10%,rgba(255,255,255,.07),transparent 70%);background-attachment:fixed}
+h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;margin:0;letter-spacing:-.01em}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);padding:24px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:22px;background:color-mix(in srgb,var(--panel) 70%,transparent)}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:38px;height:38px;border-radius:11px;background:var(--heat);display:grid;place-items:center}
+.logo i{width:18px;height:10px;border:2px solid rgb(12,13,16);border-radius:3px;display:block;position:relative}.logo i:after{content:"";position:absolute;right:-5px;top:1px;width:3px;height:4px;background:rgb(12,13,16);border-radius:1px}
+.brand h2{font-size:16px;line-height:1.15}.brand span{font-size:12px;color:var(--mut)}
+nav{display:flex;flex-direction:column;gap:6px}
+nav button{all:unset;cursor:pointer;display:grid;grid-template-columns:10px 1fr;gap:2px 12px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid transparent}
+nav button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,.scope:focus-visible{outline:2px solid var(--c0);outline-offset:2px}
+nav b{grid-row:span 2;width:10px;height:10px;border-radius:50%;background:var(--dot)}nav small{color:var(--mut);font-size:12px}
+nav button.on{background:var(--panel2);border-color:var(--line)}nav button:disabled{opacity:.45;cursor:not-allowed}
+.foot{margin-top:auto;font-size:12.5px;color:var(--mut);display:grid;gap:4px}.foot strong{color:var(--tx)}
+main{padding:28px clamp(16px,3vw,40px) 48px;min-width:0}
+header.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px}
+header.top h1{font-size:clamp(24px,3vw,34px);font-weight:800}header.top p{margin:4px 0 0;color:var(--mut);max-width:62ch}
+.btn{all:unset;cursor:pointer;padding:10px 18px;border-radius:12px;font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--tx);text-align:center}
+.btn.hot{background:var(--heat);color:rgb(12,13,16);border:0}.btn.block{display:block}.btn:hover{filter:brightness(1.1)}
+.view{display:none}.view.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px}
+.band{padding:24px 24px 18px;margin-bottom:16px;overflow:hidden}
+.band h3{font-size:20px}.band p{margin:2px 0 0;color:var(--mut);font-size:13.5px}
+.scale{position:relative;height:16px;border-radius:99px;background:var(--heat);margin:56px 14px 56px}
+.mk{position:absolute;top:50%;width:0;transition:left .6s}.mk:before{content:"";position:absolute;left:-2px;top:-9px;width:4px;height:34px;border-radius:3px;background:var(--tx);box-shadow:0 0 0 3px var(--bg);transform:translateY(-4px)}
+.mk span{position:absolute;left:0;transform:translateX(-50%);font-size:12px;font-weight:600;white-space:nowrap;text-align:center;line-height:1.2}
+.mk span em{display:block;font-style:normal;color:var(--mut);font-weight:500}
+.mk.u span{bottom:30px}.mk.d span{top:30px}
+.ticks{display:flex;justify-content:space-between;margin:-44px 14px 0;font-size:12px;color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:16px;padding:0}
+.kpis div{padding:18px 20px;border-right:1px solid var(--line)}.kpis div:last-child{border:0}
+.kpis small{color:var(--mut);font-size:13px}.kpis b{display:block;font:800 clamp(22px,2.4vw,30px)/1.2 'Bricolage Grotesque';font-variant-numeric:tabular-nums}
+.kpis b.g{background:var(--heat);-webkit-background-clip:text;background-clip:text;color:transparent}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.ch h3{font-size:17px}.ch p{margin:0 0 12px;color:var(--mut);font-size:13px}.cw{position:relative;height:250px}
+.banner{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;margin-bottom:16px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:14px}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;background:var(--heat);color:rgb(12,13,16);font-weight:700;font-size:12px;margin-right:8px}
+.scopes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.scope{cursor:pointer;border:2px solid var(--line);transition:border-color .2s}.scope.sel{border-color:var(--tx);box-shadow:0 0 40px -14px rgba(255,255,255,.35)}
+.scope h3{font-size:21px;margin:6px 0}.scope p{color:var(--mut);margin:0 0 12px}
+.scope .big{font:800 34px 'Bricolage Grotesque';background:var(--heat);-webkit-background-clip:text;background-clip:text;color:transparent}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+input,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit}
+input[type=range]{padding:0;accent-color:var(--c3)}.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ins{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}.ins>div{display:grid;gap:16px;align-content:start}
+.msg{margin-top:12px;font-size:14px;min-height:20px}.ok{color:var(--c1)}.er{color:var(--c4)}
+.feed div{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.chip{padding:1px 9px;border-radius:99px;border:1px solid;font-weight:700;font-size:12px}
+.tools{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}.tools input{max-width:320px}.tools span{color:var(--mut);font-size:13px}
+.tw{overflow-x:auto;padding:0}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:12px 14px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}
+th{cursor:pointer;color:var(--mut);font-weight:600;font-size:12.5px;background:var(--panel2)}th:hover{color:var(--tx)}
+td.h{font-weight:600}tfoot td{font-weight:700;background:var(--panel2);border:0}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:14px}nav{flex-direction:row;flex-wrap:wrap}nav small,.foot{display:none}.kpis{grid-template-columns:1fr 1fr}.kpis div:nth-child(2){border-right:0}.kpis div:nth-child(-n+2){border-bottom:1px solid var(--line)}.grid2,.scopes,.ins{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+ <div class="brand"><div class="logo"><i></i></div><div><h2>EV Thermal<br>Management</h2><span>Fleet telemetry</span></div></div>
+ <nav id="nav"></nav>
+ <div class="foot"><div>Dataset <strong id="fRows">101,320 rows</strong></div><div>Scope <strong id="fScope">Not set</strong></div></div>
+</aside>
+<main>
+ <header class="top"><div><h1 id="h1"></h1><p id="sub"></p></div><button class="btn" onclick="exportCSV()">Export table as CSV</button></header>
+
+ <section class="view on" id="v-filter">
+  <div class="scopes">
+   <div class="card scope sel" id="scFull" tabindex="0" onclick="pick('full')" onkeydown="if(event.key==='Enter')pick('full')">
+    <div class="big">101,320</div><h3>Full database</h3><p>Analyse every session across all 5 vehicle models, with no row reduction.</p>
+   </div>
+   <div class="card scope" id="scFilt" tabindex="0" onclick="pick('filtered')" onkeydown="if(event.key==='Enter')pick('filtered')">
+    <h3>Filtered database</h3><p>Keep sessions that match a threshold, then cap how many rows to analyse.</p>
+    <label for="fAttr">Attribute</label>
+    <select id="fAttr"><option>Battery core temp (°C)</option><option>Predicted SOH (%)</option><option>Charging rate (kW)</option><option>Energy consumed (kWh)</option><option>Charging duration (hours)</option></select>
+    <div class="r2"><div><label for="fOp">Condition</label><select id="fOp"><option value=">">Greater than</option><option value="<">Less than</option></select></div>
+    <div><label for="fVal">Threshold</label><input type="number" id="fVal" value="35" step="0.5"></div></div>
+    <label for="fLim">Rows to keep: <strong id="limLbl" style="color:var(--tx)">10,000</strong></label>
+    <input type="range" id="fLim" min="500" max="100000" step="500" value="10000" oninput="limLbl.textContent=(+this.value).toLocaleString()">
+   </div>
+  </div>
+  <button class="btn hot" onclick="apply()">Apply scope and open dashboard</button>
+  <p style="color:var(--mut);font-size:13px">The other views unlock once you choose a scope.</p>
+ </section>
+
+ <section class="view" id="v-overview">
+  <div class="banner"><div><span class="pill" id="bPill"></span><span id="bTxt"></span></div><button class="btn" onclick="go('filter')">Change scope</button></div>
+  <div class="card band">
+   <h3>Where each model runs on the thermal scale</h3><p>Average battery core temperature, 22 to 32 °C. Darker is cooler, lighter is hotter.</p>
+   <div class="scale" id="scale"></div>
+   <div class="ticks"><span>22 °C</span><span>27 °C</span><span>32 °C</span></div>
+  </div>
+  <div class="card kpis">
+   <div><small>Charging sessions</small><b id="k1"></b></div>
+   <div><small>Energy delivered</small><b id="k2"></b></div>
+   <div><small>Avg battery core temp</small><b class="g" id="k3"></b></div>
+   <div><small>Avg state of health</small><b id="k4"></b></div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+   <div class="card ch"><h3>Battery lifespan at risk</h3><p>Share of sessions with SOH under 85%</p><div class="cw"><canvas id="c1"></canvas></div></div>
+   <div class="card ch"><h3>Temperature rise while charging</h3><p>Average ΔT in °C</p><div class="cw"><canvas id="c2"></canvas></div></div>
+   <div class="card ch"><h3>Charging rate</h3><p>Average throughput in kW</p><div class="cw"><canvas id="c3"></canvas></div></div>
+   <div class="card ch"><h3>Peak core temperature</h3><p>Highest recorded value in °C</p><div class="cw"><canvas id="c4"></canvas></div></div>
+  </div>
+ </section>
+
+ <section class="view" id="v-insert">
+  <div class="ins">
+   <form class="card" onsubmit="addRec(event)"><h3>Add a charging session</h3>
+    <label for="iM">Vehicle model</label><select id="iM"></select>
+    <label for="iC">Charger type</label><select id="iC"><option>DC Fast Charger</option><option>Level 2</option></select>
+    <div class="r2" id="iF"></div>
+    <button class="btn hot block" style="margin-top:18px">Add session</button><div class="msg" id="iMsg"></div>
+   </form>
+   <div>
+    <form class="card" onsubmit="delRec(event)"><h3>Delete a session</h3>
+     <label for="dU">Driver user ID</label><input id="dU" value="USR-1001" required>
+     <button class="btn block" style="margin-top:14px">Delete session</button><div class="msg" id="dMsg"></div></form>
+    <div class="card"><h3>Recent changes</h3><div class="feed" id="feed"><div style="color:var(--mut);border:0">No changes yet. Add or delete a session.</div></div></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="view" id="v-calc">
+  <div class="tools"><input id="q" placeholder="Search vehicle model" oninput="renderTable()"><span id="rc"></span></div>
+  <div class="card tw"><table><thead><tr id="thr"></tr></thead><tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
+ </section>
+</main>
+</div>
+<script>
+const $=s=>document.getElementById(s),fmt=(n,d=0)=>n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const STOPS=[[112,150,205],[122,172,170],[135,182,140],[205,190,120],[215,150,110],[200,105,105]];
+const rgb=a=>a;
+function heat(x){x=Math.max(0,Math.min(1,x));const p=x*5,i=Math.floor(p),f=p-i,a=rgb(STOPS[i]),b=rgb(STOPS[Math.min(i+1,5)]);return`rgb(${a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(',')})`}
+const M=[
+ {n:'Tesla Model 3',s:'Model 3',c:24100,e:44.2,me:42.8,d:2.1,r:31.2,t:25.4,mt:25.1,h:91.8,mh:92.3,risk:6.2,rise:9.4,max:41.8},
+ {n:'Hyundai Kona',s:'Kona',c:19800,e:48.1,me:46.9,d:2.4,r:29.5,t:27.9,mt:27.5,h:89.6,mh:90.1,risk:11.4,rise:11.8,max:46.5},
+ {n:'BMW i3',s:'i3',c:20500,e:49.5,me:48.2,d:2.3,r:33.8,t:26.8,mt:26.4,h:90.9,mh:91.4,risk:8.1,rise:10.6,max:43.9},
+ {n:'Nissan Leaf',s:'Leaf',c:17900,e:31.4,me:30.1,d:1.9,r:19.6,t:28.6,mt:28.3,h:87.9,mh:88.5,risk:15.3,rise:12.9,max:49.2},
+ {n:'Chevy Bolt',s:'Bolt',c:19020,e:39.6,me:38.5,d:2.2,r:26.4,t:24.7,mt:24.3,h:91.4,mh:91.9,risk:7.0,rise:9.9,max:42.3}];
+const D={0:0,1:0,2:0,3:0,4:0};let S={mode:'full',lim:100000,txt:''},ready=false,sortK=null,sortD=1,page='filter',charts={};
+const T={filter:['Choose a data scope','Pick the full database or a filtered sample. This sets what every other view shows.'],overview:['Fleet thermal overview','How hot each model runs, how fast it charges, and where battery health is at risk.'],insert:['Edit telemetry','Add new charging sessions or remove an existing one by driver ID.'],calc:['Model statistics','Per-model aggregates from the joined vehicle and session tables.']};
+const NAV=[['filter','Scope','Full or filtered data','rgb(112,150,205)'],['overview','Overview','Fleet thermal KPIs','rgb(135,182,140)'],['insert','Edit telemetry','Add or delete sessions','rgb(205,190,120)'],['calc','Statistics','Per-model table','rgb(200,105,105)']];
+function rows(){const tot=S.mode==='full'?101320:S.lim,k=tot/101320;return M.map((m,i)=>({...m,c:Math.max(1,Math.round((m.c+D[i])*(S.mode==='full'?1:k)))}))}
+function buildNav(){$('nav').innerHTML=NAV.map(([k,a,b,c])=>`<button id="n-${k}" style="--dot:${c}" ${k!=='filter'&&!ready?'disabled':''} onclick="go('${k}')"><b></b>${a}<small>${b}</small></button>`).join('');$('n-'+page).classList.add('on')}
+function go(p){page=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));$('v-'+p).classList.add('on');$('h1').textContent=T[p][0];$('sub').textContent=T[p][1];buildNav();if(ready)render()}
+function pick(m){S.mode=m;$('scFull').classList.toggle('sel',m==='full');$('scFilt').classList.toggle('sel',m==='filtered')}
+function apply(){S.lim=S.mode==='full'?101320:+$('fLim').value;S.txt=S.mode==='full'?'All sessions, no filter':`${$('fAttr').value} ${$('fOp').value} ${$('fVal').value}, capped at ${fmt(S.lim)} rows`;ready=true;go('overview')}
+function agg(){const R=rows(),n=R.reduce((a,m)=>a+m.c,0),w=k=>R.reduce((a,m)=>a+m[k]*m.c,0)/n;return{R,n,en:R.reduce((a,m)=>a+m.e*m.c,0),t:w('t'),h:w('h')}}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function mkChart(id,key,lo,hi,unit){const R=rows(),vals=R.map(m=>m[key]),cols=vals.map(v=>heat((v-lo)/(hi-lo)));
+ if(charts[id]){const c=charts[id];c.data.datasets[0].data=vals;c.data.datasets[0].backgroundColor=cols;c.update();return}
+ const mut=css('--mut'),ln=css('--line');
+ charts[id]=new Chart($(id),{type:'bar',data:{labels:R.map(m=>m.s),datasets:[{data:vals,backgroundColor:cols,borderRadius:8,borderSkipped:false}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.parsed.y,1)+unit}}},scales:{x:{ticks:{color:mut},grid:{display:false}},y:{beginAtZero:true,ticks:{color:mut},grid:{color:ln}}}}})}
+function render(){const{R,n,en,t,h}=agg();
+ $('fRows').textContent=fmt(n)+' rows';$('fScope').textContent=S.mode==='full'?'Full database':'Filtered';
+ if(page==='overview'){
+  $('bPill').textContent=S.mode==='full'?'FULL FLEET':'FILTERED';$('bTxt').textContent=S.txt+' · '+fmt(n)+' sessions';
+  $('k1').textContent=fmt(n);$('k2').textContent=fmt(en/1000,1)+' MWh';$('k3').textContent=fmt(t,2)+' °C';$('k4').textContent=fmt(h,2)+'%';
+  $('scale').innerHTML=R.map((m,i)=>`<div class="mk ${i%2?'d':'u'}" style="left:${Math.max(0,Math.min(100,(m.t-22)/10*100))}%"><span>${m.s}<em>${fmt(m.t,1)}°</em></span></div>`).join('');
+  mkChart('c1','risk',0,18,'%');mkChart('c2','rise',8,14,' °C');mkChart('c3','r',15,35,' kW');mkChart('c4','max',38,52,' °C')}
+ if(page==='calc')renderTable();
+ if(page==='insert'&&!$('iM').options.length){$('iM').innerHTML=M.map(m=>`<option>${m.n}</option>`).join('');$('iF').innerHTML=F.map(([k,l,v,s])=>`<div><label for="i_${k}">${l}</label><input id="i_${k}" type="number" step="${s}" value="${v}" required></div>`).join('')}}
+const F=[['e','Energy (kWh)',46.8,.1],['d','Duration (hours)',2.25,.05],['r','Rate (kW)',28.4,.1],['t','Core temp (°C)',26.3,.1],['h','Predicted SOH (%)',91.2,.1],['cf','Coolant flow (L/min)',14.8,.1]];
+const COLS=[['n','Model'],['c','Sessions'],['se','Energy sum (kWh)'],['e','Avg energy'],['me','Median energy'],['d','Avg hours'],['r','Avg kW'],['t','Avg temp °C'],['mt','Median temp °C'],['h','Avg SOH %'],['mh','Median SOH %']];
+function tableRows(){let R=rows().map(m=>({...m,se:m.e*m.c})).filter(m=>m.n.toLowerCase().includes($('q').value.toLowerCase()));if(sortK)R.sort((a,b)=>(a[sortK]>b[sortK]?1:-1)*sortD);return R}
+function renderTable(){const R=tableRows();
+ $('thr').innerHTML=COLS.map(([k,l])=>`<th onclick="sortBy('${k}')">${l} ${sortK===k?(sortD>0?'↑':'↓'):''}</th>`).join('');
+ $('tb').innerHTML=R.map(m=>`<tr>${COLS.map(([k])=>k==='n'?`<td class="h">${m.n}</td>`:k==='c'?`<td>${fmt(m.c)}</td>`:k==='se'?`<td>${fmt(m.se)}</td>`:k==='t'||k==='mt'?`<td class="h" style="color:${heat((m[k]-22)/10)}">${fmt(m[k],2)}</td>`:`<td>${fmt(m[k],2)}</td>`).join('')}</tr>`).join('');
+ const n=R.reduce((a,m)=>a+m.c,0)||1,w=k=>R.reduce((a,m)=>a+m[k]*m.c,0)/n;
+ $('tf').innerHTML=`<tr><td>Fleet total</td><td>${fmt(n)}</td><td>${fmt(R.reduce((a,m)=>a+m.se,0))}</td><td>${fmt(w('e'),2)}</td><td>${fmt(w('me'),2)}</td><td>${fmt(w('d'),2)}</td><td>${fmt(w('r'),2)}</td><td>${fmt(w('t'),2)}</td><td>${fmt(w('mt'),2)}</td><td>${fmt(w('h'),2)}</td><td>${fmt(w('mh'),2)}</td></tr>`;
+ $('rc').textContent=`${R.length} of 5 models`}
+function sortBy(k){sortD=sortK===k?-sortD:1;sortK=k;renderTable()}
+function exportCSV(){const R=tableRows(),csv=[COLS.map(c=>c[1]).join(',')].concat(R.map(m=>COLS.map(([k])=>k==='n'?`"${m.n}"`:+(+m[k]).toFixed(2)).join(','))).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ev_model_statistics.csv';a.click()}
+function note(t,c){const f=$('feed');if(f.firstChild&&f.firstChild.style)f.innerHTML='';f.insertAdjacentHTML('afterbegin',`<div><span>${t}</span><span class="chip" style="color:${c}">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>`)}
+function addRec(e){e.preventDefault();const i=$('iM').selectedIndex,m=M[i],n=m.c+D[i],v=k=>+$('i_'+k).value;
+ ['e','d','r','t','h'].forEach(k=>m[k]=(m[k]*n+v(k))/(n+1));D[i]++;
+ $('iMsg').className='msg ok';$('iMsg').textContent=`Added a session for ${m.n}. Statistics updated.`;note(`Added ${m.n} · ${fmt(v('t'),1)} °C`,heat((v('t')-22)/10))}
+function delRec(e){e.preventDefault();const id=$('dU').value.trim().toUpperCase(),x=id.match(/^USR-(\d{4})$/),o=$('dMsg');
+ if(!x||+x[1]<1001){o.className='msg er';o.textContent='No session found. Use an ID like USR-1001.';return}
+ const i=+x[1]%5;if(M[i].c+D[i]<=1){o.className='msg er';o.textContent='Cannot delete the last session for a model.';return}
+ D[i]--;o.className='msg ok';o.textContent=`Deleted ${id} (${M[i].n}). Statistics updated.`;note(`Deleted ${id}`,'rgb(200,105,105)')}
+go('filter');
+</script>
+</body>
+</html>
